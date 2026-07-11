@@ -2,7 +2,7 @@ import urllib.request
 
 # Download the Pima Indians Diabetes dataset from GitHub
 url = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.csv"
-urllib.request.urlretrieve(url, "data/diabetes.csv")
+urllib.request.urlretrieve(url,"data/diabetes.csv")
 
 # Add column headers to make the CSV self-documenting
 headers = "Pregnancies,Glucose,BloodPressure,SkinThickness,Insulin,BMI,DiabetesPedigreeFunction,Age,Outcome"
