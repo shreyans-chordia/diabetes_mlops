@@ -2,4 +2,8 @@ mlflow==3.12.0
 scikit-learn==1.8.0
 fastapi==0.136.3
 uvicorn==0.34.2
+<<<<<<< HEAD
 pandas==2.2.3
+=======
+pandas==2.2.3
+>>>>>>> e2eb2bbd68663e1b2fd4106bc4eaedb135eb3bad
