@@ -118,4 +118,3 @@ with mlflow.start_run(run_name="random_forest"):
     print(f"Precision: {precision:.3f}")
     print(f"Recall: {recall:.3f}")
     print(f"F1 Score: {f1:.3f}")
->>>>>>> e2eb2bbd68663e1b2fd4106bc4eaedb135eb3bad
