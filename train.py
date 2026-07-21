@@ -11,12 +11,8 @@ mlflow.set_experiment("diabetes-prediction")
 # Enable autologging for scikit-learn
 mlflow.sklearn.autolog()
 
-# Load the dataset
-column_names = [
-    "Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
-    "Insulin", "BMI", "DiabetesPedigreeFunction", "Age", "Outcome"
-]
-data = pd.read_csv("data/diabetes.csv", names=column_names)
+# Load the dataset (CSV already has a header row, so no need to specify names)
+data = pd.read_csv("data/diabetes.csv")
 
 # Split features and target
 X = data.drop("Outcome", axis=1)
