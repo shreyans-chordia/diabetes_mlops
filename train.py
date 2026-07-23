@@ -11,20 +11,27 @@ mlflow.set_experiment("diabetes-prediction")
 # Enable autologging for scikit-learn
 mlflow.sklearn.autolog()
 
-# Load the dataset (CSV already has a header row, so no need to specify names)
+# Load the dataset
 data = pd.read_csv("data/diabetes.csv")
+
+# Replace biologically implausible zeros with NaN, then impute with median
+zero_as_missing_cols = ["Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI"]
+for col in zero_as_missing_cols:
+    data[col] = data[col].replace(0, pd.NA)
+    data[col] = pd.to_numeric(data[col], errors="coerce")
+    median_value = data[col].median()
+    data[col] = data[col].fillna(median_value)
 
 # Split features and target
 X = data.drop("Outcome", axis=1)
 y = data["Outcome"]
-
 # Train-test split
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
 
 # Train the model with MLflow tracking
-with mlflow.start_run(run_name="random_forest"):
+with mlflow.start_run(run_name="random_forest_imputed"):
     # Define hyperparameters
     params = {
         "n_estimators": 100,

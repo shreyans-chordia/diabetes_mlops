@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 venv/
 data/diabetes.csv
+mlflow.db
+mlruns/
