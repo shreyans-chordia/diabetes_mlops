@@ -6,7 +6,6 @@ import mlflow
 import mlflow.sklearn
 
 # Set up MLflow experiment
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
 mlflow.set_experiment("diabetes-prediction")
 
 # Enable autologging for scikit-learn
