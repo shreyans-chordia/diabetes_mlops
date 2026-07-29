@@ -25,6 +25,7 @@ class PredictionResponse(BaseModel):
 
 
 # Load the best model from MLflow (highest test_accuracy)
+mlflow.set_tracking_uri("sqlite:///mlflow.db")
 mlflow.set_experiment("diabetes-prediction")
 experiment = mlflow.get_experiment_by_name("diabetes-prediction")
 runs = mlflow.search_runs(experiment_ids=[experiment.experiment_id], order_by=["metrics.test_accuracy DESC"])
