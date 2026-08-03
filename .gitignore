@@ -4,3 +4,4 @@ venv/
 data/diabetes.csv
 mlflow.db
 mlruns/
+model/
