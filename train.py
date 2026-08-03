@@ -1,3 +1,5 @@
+import os
+import shutil
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
@@ -6,33 +8,28 @@ import mlflow
 import mlflow.sklearn
 
 # Set up MLflow experiment
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
 mlflow.set_experiment("diabetes-prediction")
 
 # Enable autologging for scikit-learn
 mlflow.sklearn.autolog()
 
 # Load the dataset
-data = pd.read_csv("data/diabetes.csv")
-
-# Replace biologically implausible zeros with NaN, then impute with median
-zero_as_missing_cols = ["Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI"]
-for col in zero_as_missing_cols:
-    data[col] = data[col].replace(0, pd.NA)
-    data[col] = pd.to_numeric(data[col], errors="coerce")
-    median_value = data[col].median()
-    data[col] = data[col].fillna(median_value)
-
+column_names = [
+    "Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
+    "Insulin", "BMI", "DiabetesPedigreeFunction", "Age", "Outcome"
+]
+data = pd.read_csv("data/diabetes.csv", header=0, names=column_names)
 # Split features and target
 X = data.drop("Outcome", axis=1)
 y = data["Outcome"]
+
 # Train-test split
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
 
 # Train the model with MLflow tracking
-with mlflow.start_run(run_name="random_forest_imputed"):
+with mlflow.start_run(run_name="random_forest"):
     # Define hyperparameters
     params = {
         "n_estimators": 100,
@@ -56,6 +53,13 @@ with mlflow.start_run(run_name="random_forest_imputed"):
     mlflow.log_metric("test_precision", precision)
     mlflow.log_metric("test_recall", recall)
     mlflow.log_metric("test_f1", f1)
+
+    # Export model to a fixed local folder for serving (bypasses MLflow's
+    # absolute-path artifact resolution issue for Docker)
+    MODEL_DIR = "model"
+    if os.path.exists(MODEL_DIR):
+        shutil.rmtree(MODEL_DIR)
+    mlflow.sklearn.save_model(model, MODEL_DIR, input_example=X_test.iloc[:1])
 
     print(f"Accuracy: {accuracy:.3f}")
     print(f"Precision: {precision:.3f}")

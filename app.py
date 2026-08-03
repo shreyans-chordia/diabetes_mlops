@@ -24,18 +24,14 @@ class PredictionResponse(BaseModel):
     status: str
 
 
-# Load the best model from MLflow (highest test_accuracy)
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
-mlflow.set_experiment("diabetes-prediction")
-experiment = mlflow.get_experiment_by_name("diabetes-prediction")
-runs = mlflow.search_runs(experiment_ids=[experiment.experiment_id], order_by=["metrics.test_accuracy DESC"])
-best_run_id = runs.iloc[0]["run_id"]
-model = mlflow.sklearn.load_model(f"runs:/{best_run_id}/model")
+# Load the exported model from the fixed local folder
+MODEL_DIR = "model"
+model = mlflow.sklearn.load_model(MODEL_DIR)
 
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy", "model_run_id": best_run_id}
+    return {"status": "healthy", "model_source": MODEL_DIR}
 
 
 @app.post("/predict", response_model=PredictionResponse)
