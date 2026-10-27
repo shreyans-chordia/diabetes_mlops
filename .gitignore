@@ -5,3 +5,4 @@ data/diabetes.csv
 mlflow.db
 mlruns/
 model/
+/model

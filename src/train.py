@@ -1,4 +1,5 @@
 import os
+import json
 import shutil
 
 import mlflow
@@ -113,3 +114,18 @@ if os.path.exists(MODEL_DIR):
     shutil.rmtree(MODEL_DIR)
 mlflow.sklearn.save_model(best["model"], MODEL_DIR, input_example=X_test.iloc[:1])
 print(f"Saved '{best_name}' to ./{MODEL_DIR}/")
+
+# ---------------- Write metrics for DVC ----------------
+summary = {
+    "best_model": best_name,
+    "selection_metric": SELECTION_METRIC,
+    "use_imputation": USE_IMPUTATION,
+    "best": {k: round(v, 4) for k, v in best["metrics"].items()},
+    "models": {
+        name: {k: round(v, 4) for k, v in res["metrics"].items()}
+        for name, res in results.items()
+    },
+}
+with open("metrics.json", "w") as f:
+    json.dump(summary, f, indent=2)
+print("Wrote metrics.json")
