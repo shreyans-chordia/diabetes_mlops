@@ -26,7 +26,10 @@ diabetes-mlops/
 ├── tests/                  # pytest suite (API, config, data)
 ├── data/
 │   └── diabetes.csv.dvc    # DVC pointer file (the raw CSV is not in Git)
-├── params.yaml             # All training settings and model hyperparameters
+├── params.yaml   
+├── dvc.yaml                # DVC pipeline definition (train stage)
+├── dvc.lock                # Exact hashes of the last pipeline run
+├── metrics.json            # Metrics written by training, tracked by DVC              # All training settings and model hyperparameters
 ├── tasks.bat               # Short commands: train, test, serve, docker-build...
 ├── requirements.txt        # Runtime dependencies (used by Docker)
 ├── requirements-dev.txt    # Runtime + test dependencies
@@ -105,6 +108,28 @@ tasks mlflow-ui
 
 Open http://127.0.0.1:5001 and select the `diabetes-prediction` experiment. Port 5001 is used because 5000 can conflict with other local servers.
 
+## Reproducible pipeline (DVC)
+
+Training is defined as a DVC stage in `dvc.yaml`. It depends on `src/train.py`, the dataset and the settings in `params.yaml`, and it produces `model/` and `metrics.json`. `dvc.lock` records the exact hashes of the last run.
+
+| Command | What it does |
+|---|---|
+| `dvc repro` | Re-runs training only if the code, data or params changed |
+| `dvc metrics show` | Prints the metrics from `metrics.json` |
+| `dvc push` | Uploads the dataset and model to the DVC remote |
+| `dvc pull` | Downloads the dataset and model from the DVC remote |
+| `dvc status -c` | Checks that the local cache and the remote are in sync |
+
+To rebuild everything from a fresh clone:
+
+```
+git clone https://github.com/shreyans-chordia/diabetes_mlops
+cd diabetes_mlops
+dvc pull
+```
+
+The remote is currently a local folder (`D:\dvc-remote`, set in `.dvc/config`), so `dvc pull` only works on the machine that holds it. It will be replaced with a cloud remote before CI/CD is added.
+
 ## Run the tests
 
 ```
@@ -157,7 +182,7 @@ MLflow 3.x resolves relative artifact paths to absolute paths when an experiment
 - [x] Environment setup, DVC data versioning, MLflow tracking, FastAPI serving, Docker
 - [x] **Stage A:** Random Forest vs Gradient Boosting comparison with automatic best-model export
 - [x] **Stage B:** Repo restructure (`src/` layout, `params.yaml`, pytest tests, `tasks.bat`)
-- [ ] **Stage C:** DVC pipelines (`dvc.yaml`) and a DVC remote
+- [x] **Stage C:** DVC pipeline (`dvc.yaml`) with metrics and a local DVC remote (cloud remote planned with CI/CD)
 - [ ] **Stage D:** More models, cross-validation, tuning, MLflow Model Registry
 - [ ] **Stage E:** API hardening (input range validation, `/model-info`, logging)
 - [ ] **Stage F:** CI/CD with GitHub Actions (lint, tests, Docker build and push)
