@@ -1,25 +1,68 @@
 {
-  "best_model": "random_forest",
+  "best_model": "gradient_boosting",
   "selection_metric": "f1",
+  "selection_basis": "cv_mean",
   "use_imputation": false,
   "best": {
-    "accuracy": 0.7662,
-    "precision": 0.6863,
-    "recall": 0.6364,
-    "f1": 0.6604
-  },
-  "models": {
-    "random_forest": {
-      "accuracy": 0.7662,
-      "precision": 0.6863,
-      "recall": 0.6364,
-      "f1": 0.6604
+    "cv": {
+      "accuracy": 0.7557,
+      "precision": 0.6632,
+      "recall": 0.6014,
+      "f1": 0.6287
     },
-    "gradient_boosting": {
+    "cv_std": {
+      "accuracy": 0.0195,
+      "precision": 0.0241,
+      "recall": 0.0711,
+      "f1": 0.0461
+    },
+    "test": {
       "accuracy": 0.7403,
       "precision": 0.6271,
       "recall": 0.6727,
       "f1": 0.6491
+    }
+  },
+  "models": {
+    "random_forest": {
+      "cv": {
+        "accuracy": 0.7638,
+        "precision": 0.7069,
+        "recall": 0.545,
+        "f1": 0.6122
+      },
+      "cv_std": {
+        "accuracy": 0.0275,
+        "precision": 0.0338,
+        "recall": 0.0854,
+        "f1": 0.0623
+      },
+      "test": {
+        "accuracy": 0.7662,
+        "precision": 0.6863,
+        "recall": 0.6364,
+        "f1": 0.6604
+      }
+    },
+    "gradient_boosting": {
+      "cv": {
+        "accuracy": 0.7557,
+        "precision": 0.6632,
+        "recall": 0.6014,
+        "f1": 0.6287
+      },
+      "cv_std": {
+        "accuracy": 0.0195,
+        "precision": 0.0241,
+        "recall": 0.0711,
+        "f1": 0.0461
+      },
+      "test": {
+        "accuracy": 0.7403,
+        "precision": 0.6271,
+        "recall": 0.6727,
+        "f1": 0.6491
+      }
     }
   }
 }

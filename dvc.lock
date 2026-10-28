@@ -9,10 +9,13 @@ stages:
       size: 24143
     - path: src/train.py
       hash: md5
-      md5: 4eccfcca5f1bb7135d5fd4673482fa39
-      size: 4743
+      md5: c6fb57d60e7acabc8c3ddf38ae05e780
+      size: 6947
     params:
       params.yaml:
+        cv:
+          n_splits: 5
+          seed: 42
         data:
           path: data/diabetes.csv
           test_size: 0.2
@@ -43,10 +46,10 @@ stages:
     outs:
     - path: metrics.json
       hash: md5
-      md5: 7be5fe5a14e2cbdd804eb56cf1942160
-      size: 493
+      md5: 695c007ffa03a6fc321a500bb9575b2c
+      size: 1413
     - path: model
       hash: md5
-      md5: 2101593f4719cc5be3b31d84299e1247.dir
-      size: 419003
+      md5: 6124b01789279fcb4cc5cd09cef74332.dir
+      size: 139306
       nfiles: 7

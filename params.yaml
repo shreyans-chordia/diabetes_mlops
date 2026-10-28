@@ -29,3 +29,7 @@ models:
     learning_rate: 0.1
     max_depth: 3
     random_state: 42
+
+cv:
+  n_splits: 5
+  seed: 42

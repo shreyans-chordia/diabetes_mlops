@@ -10,6 +10,7 @@ stages:
       - export
       - mlflow
       - models
+      - cv
     outs:
       - model
     metrics:
