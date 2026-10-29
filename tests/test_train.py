@@ -1,7 +1,15 @@
 import pandas as pd
 import pytest
+from sklearn.linear_model import LogisticRegression
 
-from src.train import MODEL_CLASSES, impute_zeros, pick_winner, validate_config
+from src.train import (
+    MODEL_CLASSES,
+    impute_zeros,
+    make_search,
+    pick_winner,
+    search_space_for,
+    validate_config,
+)
 
 
 def test_impute_zeros_uses_train_median_and_leaves_inputs_alone():
@@ -44,3 +52,27 @@ def test_every_model_can_fit_and_predict_proba():
         model = build()
         model.fit(X, y)
         assert model.predict_proba(X).shape == (8, 2), name
+
+
+
+def test_search_space_for_prefixes_pipeline_params():
+    space = {"C": [0.1, 1.0]}
+    assert search_space_for("logistic_regression", space) == {"clf__C": [0.1, 1.0]}
+    assert search_space_for("random_forest", space) == {"C": [0.1, 1.0]}
+
+
+def test_make_search_caps_iterations_to_space_size():
+    space = {"C": [0.1, 1.0, 10.0]}
+    tuning_cfg = {"n_iter": 20, "inner_splits": 3, "seed": 42}
+    search = make_search(LogisticRegression(), space, tuning_cfg, "f1")
+    assert search.n_iter == 3
+
+
+def test_validate_config_requires_search_space_when_tuning():
+    cfg = {
+        "selection": {"metric": "f1"},
+        "models": {"random_forest": {}},
+        "tuning": {"enabled": True, "search_spaces": {}},
+    }
+    with pytest.raises(ValueError):
+        validate_config(cfg)

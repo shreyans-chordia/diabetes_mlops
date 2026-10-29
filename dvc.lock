@@ -9,8 +9,8 @@ stages:
       size: 24143
     - path: src/train.py
       hash: md5
-      md5: 31d045a486a6e1edeccfc0afd25e8c30
-      size: 7379
+      md5: 8f6e6f77b2d21154ff5942370ce15ea1
+      size: 9570
     params:
       params.yaml:
         cv:
@@ -47,13 +47,67 @@ stages:
             random_state: 42
         selection:
           metric: f1
+        tuning:
+          enabled: true
+          n_iter: 20
+          inner_splits: 3
+          seed: 42
+          search_spaces:
+            random_forest:
+              n_estimators:
+              - 100
+              - 200
+              - 300
+              max_depth:
+              - 3
+              - 5
+              - 8
+              - 12
+              - 
+              min_samples_leaf:
+              - 1
+              - 2
+              - 4
+              - 8
+              max_features:
+              - sqrt
+              - 0.5
+              - 1.0
+            gradient_boosting:
+              n_estimators:
+              - 50
+              - 100
+              - 200
+              learning_rate:
+              - 0.01
+              - 0.05
+              - 0.1
+              - 0.2
+              max_depth:
+              - 2
+              - 3
+              - 4
+              subsample:
+              - 0.7
+              - 0.85
+              - 1.0
+            logistic_regression:
+              C:
+              - 0.01
+              - 0.1
+              - 1.0
+              - 10.0
+              - 100.0
+              class_weight:
+              - 
+              - balanced
     outs:
     - path: metrics.json
       hash: md5
-      md5: d2d6c2b02eaed72c0572f7056641b893
-      size: 1853
+      md5: 9f3e42070563692ddd170cc11a187e6b
+      size: 2346
     - path: model
       hash: md5
-      md5: 5fe0b76c5b842edaebfadaf49bd558eb.dir
-      size: 139306
+      md5: b97b561130acc3a98be53355f9bfd7d8.dir
+      size: 3943
       nfiles: 7
