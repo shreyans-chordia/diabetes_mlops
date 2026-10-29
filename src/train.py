@@ -10,6 +10,9 @@ from mlflow.tracking import MlflowClient
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.model_selection import StratifiedKFold, cross_validate, train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 COLUMN_NAMES = [
     "Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
@@ -17,10 +20,16 @@ COLUMN_NAMES = [
 ]
 METRIC_NAMES = ["accuracy", "precision", "recall", "f1"]
 
-# Model names allowed in params.yaml -> the class that implements them
+def make_logistic_regression(**params):
+    """Logistic regression needs scaled features; scaling is fitted inside each CV fold."""
+    return Pipeline([("scaler", StandardScaler()), ("clf", LogisticRegression(**params))])
+
+
+# Model names allowed in params.yaml -> a callable that builds the estimator
 MODEL_CLASSES = {
     "random_forest": RandomForestClassifier,
     "gradient_boosting": GradientBoostingClassifier,
+    "logistic_regression": make_logistic_regression,
 }
 
 

@@ -63,6 +63,26 @@
         "recall": 0.6727,
         "f1": 0.6491
       }
+    },
+    "logistic_regression": {
+      "cv": {
+        "accuracy": 0.7654,
+        "precision": 0.7154,
+        "recall": 0.5542,
+        "f1": 0.6167
+      },
+      "cv_std": {
+        "accuracy": 0.0145,
+        "precision": 0.053,
+        "recall": 0.091,
+        "f1": 0.0522
+      },
+      "test": {
+        "accuracy": 0.7532,
+        "precision": 0.6491,
+        "recall": 0.6727,
+        "f1": 0.6607
+      }
     }
   }
 }

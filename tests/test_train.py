@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from src.train import impute_zeros, pick_winner, validate_config
+from src.train import MODEL_CLASSES, impute_zeros, pick_winner, validate_config
 
 
 def test_impute_zeros_uses_train_median_and_leaves_inputs_alone():
@@ -28,3 +28,19 @@ def test_validate_config_rejects_unknown_metric():
     cfg = {"selection": {"metric": "bogus"}, "models": {"random_forest": {}}}
     with pytest.raises(ValueError):
         validate_config(cfg)
+
+
+
+def test_logistic_regression_is_a_scaled_pipeline():
+    model = MODEL_CLASSES["logistic_regression"](C=1.0, max_iter=100)
+    assert model.steps[0][0] == "scaler"
+
+
+def test_every_model_can_fit_and_predict_proba():
+    # The API calls predict_proba, so every candidate must support it
+    X = pd.DataFrame({"a": [0, 1, 2, 3, 4, 5, 6, 7], "b": [1, 0, 1, 0, 1, 0, 1, 0]})
+    y = [0, 0, 0, 0, 1, 1, 1, 1]
+    for name, build in MODEL_CLASSES.items():
+        model = build()
+        model.fit(X, y)
+        assert model.predict_proba(X).shape == (8, 2), name

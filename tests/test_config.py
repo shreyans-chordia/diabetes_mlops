@@ -1,7 +1,7 @@
 import yaml
 
 ALLOWED_METRICS = ["accuracy", "precision", "recall", "f1"]
-ALLOWED_MODELS = ["random_forest", "gradient_boosting"]
+ALLOWED_MODELS = ["random_forest", "gradient_boosting","logistic_regression"]
 
 
 def load_params():
