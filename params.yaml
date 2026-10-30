@@ -57,3 +57,6 @@ tuning:
     logistic_regression:
       C: [0.01, 0.1, 1.0, 10.0, 100.0]
       class_weight: [null, balanced]
+
+threshold:
+  target_recall: 0.80   # the threshold search aims for at least this recall

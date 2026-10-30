@@ -1,13 +1,17 @@
+import numpy as np
 import pandas as pd
 import pytest
 from sklearn.linear_model import LogisticRegression
 
 from src.train import (
     MODEL_CLASSES,
+    choose_threshold,
+    confusion_counts,
     impute_zeros,
     make_search,
     pick_winner,
     search_space_for,
+    threshold_table,
     validate_config,
 )
 
@@ -76,3 +80,32 @@ def test_validate_config_requires_search_space_when_tuning():
     }
     with pytest.raises(ValueError):
         validate_config(cfg)
+
+
+
+def test_choose_threshold_picks_highest_precision_meeting_target():
+    rows = [
+        {"threshold": 0.3, "precision": 0.50, "recall": 0.90, "f1": 0.64},
+        {"threshold": 0.5, "precision": 0.60, "recall": 0.82, "f1": 0.69},
+        {"threshold": 0.7, "precision": 0.75, "recall": 0.60, "f1": 0.67},
+    ]
+    assert choose_threshold(rows, 0.80)["threshold"] == 0.5
+
+
+def test_choose_threshold_falls_back_to_best_recall():
+    rows = [
+        {"threshold": 0.3, "precision": 0.50, "recall": 0.50, "f1": 0.50},
+        {"threshold": 0.7, "precision": 0.80, "recall": 0.40, "f1": 0.53},
+    ]
+    assert choose_threshold(rows, 0.95)["threshold"] == 0.3
+
+
+def test_threshold_table_separates_a_perfect_ranking():
+    y = [0, 0, 1, 1]
+    proba = np.array([0.1, 0.4, 0.6, 0.9])
+    row = threshold_table(y, proba, [0.5])[0]
+    assert row["recall"] == 1.0 and row["precision"] == 1.0
+
+
+def test_confusion_counts():
+    assert confusion_counts([0, 0, 1, 1], [0, 1, 1, 1]) == {"tn": 1, "fp": 1, "fn": 0, "tp": 2}

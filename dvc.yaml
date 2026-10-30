@@ -12,6 +12,7 @@ stages:
       - models
       - cv
       - tuning
+      - threshold
     outs:
       - model
     metrics:

@@ -9,8 +9,8 @@ stages:
       size: 24143
     - path: src/train.py
       hash: md5
-      md5: 8f6e6f77b2d21154ff5942370ce15ea1
-      size: 9570
+      md5: de66b052d1b15cc3e1826df1365f863a
+      size: 13996
     params:
       params.yaml:
         cv:
@@ -47,6 +47,8 @@ stages:
             random_state: 42
         selection:
           metric: f1
+        threshold:
+          target_recall: 0.8
         tuning:
           enabled: true
           n_iter: 20
@@ -104,10 +106,10 @@ stages:
     outs:
     - path: metrics.json
       hash: md5
-      md5: 9f3e42070563692ddd170cc11a187e6b
-      size: 2346
+      md5: 161367b7486011b40f98f5d65bd6f869
+      size: 3617
     - path: model
       hash: md5
-      md5: b97b561130acc3a98be53355f9bfd7d8.dir
+      md5: aa8a33f1d144237c8953348a300b6d05.dir
       size: 3943
       nfiles: 7

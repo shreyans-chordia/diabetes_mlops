@@ -2,18 +2,29 @@ import json
 import math
 import os
 import shutil
+from contextlib import contextmanager
 
 import mlflow
 import mlflow.sklearn
+import numpy as np
 import pandas as pd
 import yaml
 from mlflow.tracking import MlflowClient
+from sklearn.base import clone
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 from sklearn.model_selection import (
     RandomizedSearchCV,
     StratifiedKFold,
+    cross_val_predict,
     cross_validate,
     train_test_split,
 )
@@ -24,7 +35,8 @@ COLUMN_NAMES = [
     "Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
     "Insulin", "BMI", "DiabetesPedigreeFunction", "Age", "Outcome",
 ]
-METRIC_NAMES = ["accuracy", "precision", "recall", "f1"]
+METRIC_NAMES = ["accuracy", "precision", "recall", "f1", "roc_auc"]
+THRESHOLDS = np.round(np.arange(0.10, 0.901, 0.05), 2)
 
 
 def make_logistic_regression(**params):
@@ -38,6 +50,16 @@ MODEL_CLASSES = {
     "gradient_boosting": GradientBoostingClassifier,
     "logistic_regression": make_logistic_regression,
 }
+
+
+@contextmanager
+def autolog_paused():
+    """Autolog would otherwise log every internal fit as its own MLflow run."""
+    mlflow.sklearn.autolog(disable=True)
+    try:
+        yield
+    finally:
+        mlflow.sklearn.autolog()
 
 
 def load_config(path="params.yaml"):
@@ -58,6 +80,9 @@ def validate_config(cfg):
         missing = [name for name in cfg["models"] if name not in spaces]
         if missing:
             raise ValueError(f"tuning is enabled but there is no search space for: {missing}")
+    target = cfg["threshold"]["target_recall"]
+    if not 0 < target <= 1:
+        raise ValueError(f"threshold.target_recall must be in (0, 1], got {target}")
 
 
 def load_split(cfg):
@@ -79,13 +104,41 @@ def impute_zeros(X_train, X_test, columns):
     return X_train, X_test
 
 
-def test_metrics(y_true, y_pred):
+def test_metrics(y_true, y_pred, y_score):
     return {
         "accuracy": accuracy_score(y_true, y_pred),
         "precision": precision_score(y_true, y_pred),
         "recall": recall_score(y_true, y_pred),
         "f1": f1_score(y_true, y_pred),
+        "roc_auc": roc_auc_score(y_true, y_score),
     }
+
+
+def confusion_counts(y_true, y_pred):
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
+    return {"tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)}
+
+
+def threshold_table(y_true, proba, thresholds):
+    """Precision / recall / F1 when predicting 'diabetic' at proba >= threshold."""
+    rows = []
+    for t in thresholds:
+        pred = (np.asarray(proba) >= t).astype(int)
+        rows.append({
+            "threshold": round(float(t), 2),
+            "precision": round(float(precision_score(y_true, pred, zero_division=0)), 4),
+            "recall": round(float(recall_score(y_true, pred, zero_division=0)), 4),
+            "f1": round(float(f1_score(y_true, pred, zero_division=0)), 4),
+        })
+    return rows
+
+
+def choose_threshold(rows, target_recall):
+    """Highest-precision row that still reaches target_recall (fallback: best recall)."""
+    reached = [r for r in rows if r["recall"] >= target_recall]
+    if reached:
+        return max(reached, key=lambda r: (r["precision"], r["threshold"]))
+    return max(rows, key=lambda r: (r["recall"], r["threshold"]))
 
 
 def search_space_for(name, space):
@@ -118,12 +171,8 @@ def cross_validate_model(model, X_train, y_train, n_splits, seed):
     so this is nested CV and the score is not inflated by tuning.
     """
     cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
-    # Autolog would otherwise log every fold's fit; keep the experiment readable.
-    mlflow.sklearn.autolog(disable=True)
-    try:
+    with autolog_paused():
         scores = cross_validate(model, X_train, y_train, cv=cv, scoring=METRIC_NAMES)
-    finally:
-        mlflow.sklearn.autolog()
     return {
         name: {
             "mean": float(scores[f"test_{name}"].mean()),
@@ -147,6 +196,7 @@ def main():
     model_dir = cfg["export"]["model_dir"]
     n_splits = cfg["cv"]["n_splits"]
     cv_seed = cfg["cv"]["seed"]
+    target_recall = cfg["threshold"]["target_recall"]
     tuning_cfg = cfg.get("tuning", {})
     tuning_on = bool(tuning_cfg.get("enabled", False))
 
@@ -184,21 +234,27 @@ def main():
             candidate.fit(X_train, y_train)
             if tuning_on:
                 model = candidate.best_estimator_
-                chosen = {k: v for k, v in candidate.best_params_.items()}
+                chosen_params = dict(candidate.best_params_)
             else:
                 model = candidate
-                chosen = dict(params)
+                chosen_params = dict(params)
 
-            t_scores = test_metrics(y_test, model.predict(X_test))
+            y_pred = model.predict(X_test)
+            y_proba = model.predict_proba(X_test)[:, 1]
+            t_scores = test_metrics(y_test, y_pred, y_proba)
             for name, value in t_scores.items():
                 mlflow.log_metric(f"test_{name}", value)
+
+            cm = confusion_counts(y_test, y_pred)
+            mlflow.log_dict(cm, "confusion_matrix.json")
 
             results[run_name] = {
                 "model": model,
                 "run_id": run.info.run_id,
                 "cv": cv_scores,
                 "test": t_scores,
-                "params": chosen,
+                "params": chosen_params,
+                "confusion_matrix": cm,
             }
 
     # ---------------- Compare and pick the winner ----------------
@@ -208,8 +264,8 @@ def main():
         cv, t = res["cv"], res["test"]
         print(
             f"{name:<20} cv_f1={cv['f1']['mean']:.3f} (+/-{cv['f1']['std']:.3f})  "
-            f"cv_recall={cv['recall']['mean']:.3f}  "
-            f"test_f1={t['f1']:.3f}  test_recall={t['recall']:.3f}"
+            f"cv_recall={cv['recall']['mean']:.3f}  cv_auc={cv['roc_auc']['mean']:.3f}  |  "
+            f"test_f1={t['f1']:.3f}  test_recall={t['recall']:.3f}  test_auc={t['roc_auc']:.3f}"
         )
 
     best_name = pick_winner(results, metric)
@@ -221,11 +277,48 @@ def main():
     for name, res in results.items():
         client.set_tag(res["run_id"], "selected_for_serving", str(name == best_name))
 
+    # ---------------- Threshold analysis for the winner ----------------
+    # Out-of-fold probabilities on the TRAIN split choose the threshold;
+    # the test split is used once, to report the result.
+    with autolog_paused():
+        oof_proba = cross_val_predict(
+            clone(best["model"]),
+            X_train,
+            y_train,
+            cv=StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=cv_seed),
+            method="predict_proba",
+        )[:, 1]
+    rows = threshold_table(y_train, oof_proba, THRESHOLDS)
+    chosen = choose_threshold(rows, target_recall)
+    reached = chosen["recall"] >= target_recall
+
+    test_proba = best["model"].predict_proba(X_test)[:, 1]
+    test_at = threshold_table(y_test, test_proba, [chosen["threshold"]])[0]
+    test_cm_at = confusion_counts(y_test, (test_proba >= chosen["threshold"]).astype(int))
+
+    print(f"\n=== Threshold analysis for {best_name} (out-of-fold, train split) ===")
+    print("threshold  precision  recall     f1")
+    for r in rows:
+        marker = "  <-- chosen" if r["threshold"] == chosen["threshold"] else ""
+        print(f"{r['threshold']:>9.2f}  {r['precision']:>9.3f}  {r['recall']:>6.3f}  {r['f1']:>5.3f}{marker}")
+    note = "" if reached else " (target NOT reached; showing the best recall available)"
+    print(f"\nTarget recall {target_recall}: chosen threshold {chosen['threshold']:.2f}{note}")
+    print(
+        f"Test split at that threshold: precision={test_at['precision']:.3f}  "
+        f"recall={test_at['recall']:.3f}  f1={test_at['f1']:.3f}  confusion={test_cm_at}"
+    )
+
+    with mlflow.start_run(run_id=best["run_id"]):
+        mlflow.log_dict({"rows": rows}, "threshold_analysis.json")
+        mlflow.log_metric("chosen_threshold", chosen["threshold"])
+        mlflow.log_metric("test_recall_at_threshold", test_at["recall"])
+        mlflow.log_metric("test_precision_at_threshold", test_at["precision"])
+
     # ---------------- Export the winner for serving ----------------
     if os.path.exists(model_dir):
         shutil.rmtree(model_dir)
     mlflow.sklearn.save_model(best["model"], model_dir, input_example=X_test.iloc[:1])
-    print(f"Saved '{best_name}' to ./{model_dir}/")
+    print(f"\nSaved '{best_name}' to ./{model_dir}/")
 
     # ---------------- Write metrics for DVC ----------------
     def summarize(res):
@@ -233,6 +326,7 @@ def main():
             "cv": {k: round(v["mean"], 4) for k, v in res["cv"].items()},
             "cv_std": {k: round(v["std"], 4) for k, v in res["cv"].items()},
             "test": {k: round(v, 4) for k, v in res["test"].items()},
+            "confusion_matrix": res["confusion_matrix"],
             "params": res["params"],
         }
 
@@ -244,6 +338,14 @@ def main():
         "use_imputation": use_imputation,
         "best": summarize(best),
         "models": {name: summarize(res) for name, res in results.items()},
+        "threshold_analysis": {
+            "target_recall": target_recall,
+            "target_reached": bool(reached),
+            "chosen_threshold": chosen["threshold"],
+            "oof_at_threshold": chosen,
+            "test_at_threshold": test_at,
+            "test_confusion_at_threshold": test_cm_at,
+        },
     }
     with open("metrics.json", "w") as f:
         json.dump(summary, f, indent=2, default=str)

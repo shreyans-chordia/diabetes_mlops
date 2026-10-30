@@ -1,6 +1,6 @@
 import yaml
 
-ALLOWED_METRICS = ["accuracy", "precision", "recall", "f1"]
+ALLOWED_METRICS = ["accuracy", "precision", "recall", "f1","roc_auc"]
 ALLOWED_MODELS = ["random_forest", "gradient_boosting","logistic_regression"]
 
 
@@ -11,7 +11,7 @@ def load_params():
 
 def test_params_has_required_sections():
     cfg = load_params()
-    for section in ["data", "selection", "export", "mlflow", "models"]:
+    for section in ["data", "selection", "export", "mlflow", "models", "cv", "tuning", "threshold"]:
         assert section in cfg, f"missing section: {section}"
 
 
